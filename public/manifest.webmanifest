@@ -1,0 +1,33 @@
+{
+  "name": "AIRWAVE — Icecast Broadcaster",
+  "short_name": "AIRWAVE",
+  "description": "Профессиональный пульт управления Icecast трансляцией с live-метаданными",
+  "start_url": "/",
+  "scope": "/",
+  "display": "standalone",
+  "orientation": "portrait",
+  "background_color": "#0d0d14",
+  "theme_color": "#a855f7",
+  "categories": ["music", "entertainment", "productivity"],
+  "lang": "ru",
+  "icons": [
+    {
+      "src": "https://cdn.poehali.dev/projects/da726e7d-d068-4a41-b017-387704d03cd8/files/67f67c2d-70f4-42b3-8d99-7bad795d386b.jpg",
+      "sizes": "192x192",
+      "type": "image/jpeg",
+      "purpose": "any"
+    },
+    {
+      "src": "https://cdn.poehali.dev/projects/da726e7d-d068-4a41-b017-387704d03cd8/files/67f67c2d-70f4-42b3-8d99-7bad795d386b.jpg",
+      "sizes": "512x512",
+      "type": "image/jpeg",
+      "purpose": "any"
+    },
+    {
+      "src": "https://cdn.poehali.dev/projects/da726e7d-d068-4a41-b017-387704d03cd8/files/67f67c2d-70f4-42b3-8d99-7bad795d386b.jpg",
+      "sizes": "512x512",
+      "type": "image/jpeg",
+      "purpose": "maskable"
+    }
+  ]
+}

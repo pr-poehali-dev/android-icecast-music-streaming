@@ -8,6 +8,7 @@ import { Switch } from '@/components/ui/switch';
 import { Textarea } from '@/components/ui/textarea';
 import AppShell from '@/components/AppShell';
 import { useSettings, IcecastSettings } from '@/lib/broadcastStore';
+import { checkIcecast } from '@/lib/icecastApi';
 
 const BITRATES = [64, 96, 128, 192, 256, 320];
 const SAMPLE_RATES = [22050, 32000, 44100, 48000];
@@ -21,18 +22,32 @@ const SettingsPage = () => {
   const update = <K extends keyof IcecastSettings>(key: K, value: IcecastSettings[K]) =>
     setSettings((s) => ({ ...s, [key]: value }));
 
-  const testConnection = () => {
-    if (!settings.host || !settings.password) {
-      toast.error('Заполни хост и пароль');
+  const testConnection = async () => {
+    if (!settings.host) {
+      toast.error('Заполни хост');
       return;
     }
     setTesting(true);
-    setTimeout(() => {
+    try {
+      const r = await checkIcecast(settings);
+      if (r.ok) {
+        toast.success('Соединение установлено', {
+          description: `${settings.host}:${settings.port}${settings.mountPoint}${
+            r.serverInfo?.serverId ? ` • ${r.serverInfo.serverId}` : ''
+          }`,
+        });
+      } else if (!r.tcp) {
+        toast.error('Сервер недоступен', { description: r.error || 'Проверь хост и порт' });
+      } else if (r.authOk === false && settings.password) {
+        toast.error('Неверный пароль источника');
+      } else {
+        toast.error('Ошибка соединения', { description: r.error || 'Проверь настройки' });
+      }
+    } catch (e) {
+      toast.error('Ошибка сети', { description: e instanceof Error ? e.message : String(e) });
+    } finally {
       setTesting(false);
-      toast.success('Соединение установлено', {
-        description: `${settings.host}:${settings.port}${settings.mountPoint}`,
-      });
-    }, 1500);
+    }
   };
 
   return (

@@ -1,0 +1,5 @@
+{
+  "icecast-stream": "https://functions.poehali.dev/1f36dc57-5073-4445-9434-f8deb9311515",
+  "icecast-check": "https://functions.poehali.dev/7aa3b46a-9975-4d02-af14-d9a1b256e91b",
+  "icecast-metadata": "https://functions.poehali.dev/be4e7697-88d8-45a1-8aae-4eb08ffe63f2"
+}

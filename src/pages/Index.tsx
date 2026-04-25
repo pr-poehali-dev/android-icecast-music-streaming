@@ -1,4 +1,4 @@
-import { useMemo } from 'react';
+import { useEffect, useMemo, useRef } from 'react';
 import { toast } from 'sonner';
 import Icon from '@/components/ui/icon';
 import { Button } from '@/components/ui/button';
@@ -6,24 +6,48 @@ import { Slider } from '@/components/ui/slider';
 import AppShell from '@/components/AppShell';
 import AudioVisualizer from '@/components/AudioVisualizer';
 import { useBroadcast, useQueue, useSettings, useTracks, formatUptime, formatTime } from '@/lib/broadcastStore';
+import { useMicStreamer } from '@/lib/useMicStreamer';
+import { sendMetadata } from '@/lib/icecastApi';
 
 const Index = () => {
   const [state, setState] = useBroadcast();
   const [tracks] = useTracks();
   const [queue] = useQueue();
   const [settings] = useSettings();
+  const streamer = useMicStreamer(settings);
+  const lastMetaRef = useRef<string | null>(null);
 
   const currentTrack = useMemo(() => {
     const id = state.currentTrackId ?? queue[0];
     return tracks.find((t) => t.id === id) ?? tracks[0];
   }, [state.currentTrackId, queue, tracks]);
 
-  const toggleLive = () => {
+  const pushMetadata = async (artist: string, title: string) => {
+    const key = `${artist}|${title}`;
+    if (lastMetaRef.current === key) return;
+    lastMetaRef.current = key;
+    if (!settings.sendMetadata || !settings.password) return;
+    const r = await sendMetadata(settings, artist, title);
+    if (r.ok) {
+      toast.success('Метаданные отправлены', { description: `${artist} — ${title}` });
+    } else if (r.error) {
+      toast.error('Не удалось обновить метаданные', { description: r.error });
+    }
+  };
+
+  useEffect(() => {
+    if (!state.isLive || !currentTrack) return;
+    pushMetadata(currentTrack.artist, currentTrack.title);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [state.isLive, currentTrack?.id]);
+
+  const toggleLive = async () => {
     if (!state.isLive) {
-      if (!settings.password) {
-        toast.error('Сначала укажи пароль источника в настройках');
+      if (!settings.host || !settings.password) {
+        toast.error('Укажи хост и пароль в настройках');
         return;
       }
+      await streamer.start();
       setState((s) => ({
         ...s,
         isLive: true,
@@ -35,20 +59,24 @@ const Index = () => {
         description: `${settings.stationName} • ${settings.bitrate} kbps`,
       });
     } else {
+      streamer.stop();
+      lastMetaRef.current = null;
       setState((s) => ({ ...s, isLive: false, listeners: 0 }));
       toast('Эфир остановлен');
     }
   };
+
+  useEffect(() => {
+    if (streamer.error && state.isLive) {
+      toast.error('Ошибка стрима', { description: streamer.error });
+    }
+  }, [streamer.error, state.isLive]);
 
   const skipNext = () => {
     if (!currentTrack) return;
     const idx = queue.indexOf(currentTrack.id);
     const nextId = queue[(idx + 1) % queue.length];
     setState((s) => ({ ...s, currentTrackId: nextId }));
-    if (settings.sendMetadata) {
-      const next = tracks.find((t) => t.id === nextId);
-      if (next) toast.success('Метаданные обновлены', { description: `${next.artist} — ${next.title}` });
-    }
   };
 
   return (
@@ -57,7 +85,13 @@ const Index = () => {
         <div className="grid grid-cols-3 gap-3">
           <StatCard icon="Users" label="Слушатели" value={state.listeners.toString()} color="cyan" />
           <StatCard icon="Timer" label="В эфире" value={formatUptime(state.uptime)} color="purple" mono />
-          <StatCard icon="Activity" label="Битрейт" value={`${settings.bitrate}`} color="pink" suffix="kbps" />
+          <StatCard
+            icon="Activity"
+            label={state.isLive ? 'Отправлено' : 'Битрейт'}
+            value={state.isLive ? formatBytes(streamer.bytesSent) : `${settings.bitrate}`}
+            color="pink"
+            suffix={state.isLive ? '' : 'kbps'}
+          />
         </div>
 
         <div className="relative glass rounded-3xl p-6 overflow-hidden">
@@ -174,12 +208,14 @@ const Index = () => {
           <Button
             variant="outline"
             className="w-full border-secondary/40 hover:bg-secondary/10 hover:text-secondary"
-            onClick={() => {
-              if (currentTrack) {
-                toast.success('Метаданные отправлены слушателям', {
-                  description: `${currentTrack.artist} — ${currentTrack.title}`,
-                });
+            onClick={async () => {
+              if (!currentTrack) return;
+              if (!settings.host || !settings.password) {
+                toast.error('Укажи хост и пароль в настройках');
+                return;
               }
+              lastMetaRef.current = null;
+              await pushMetadata(currentTrack.artist, currentTrack.title);
             }}
           >
             <Icon name="Send" size={16} className="mr-2" />
@@ -190,6 +226,12 @@ const Index = () => {
     </AppShell>
   );
 };
+
+function formatBytes(b: number) {
+  if (b < 1024) return `${b} B`;
+  if (b < 1024 * 1024) return `${(b / 1024).toFixed(1)} KB`;
+  return `${(b / 1024 / 1024).toFixed(1)} MB`;
+}
 
 function StatCard({
   icon,

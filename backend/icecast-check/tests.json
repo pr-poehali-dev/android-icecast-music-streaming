@@ -1,0 +1,24 @@
+{
+  "tests": [
+    {
+      "name": "OPTIONS preflight",
+      "method": "OPTIONS",
+      "path": "/",
+      "expectedStatus": 200
+    },
+    {
+      "name": "Missing host",
+      "method": "POST",
+      "path": "/",
+      "body": {"port": 8000},
+      "expectedStatus": 400
+    },
+    {
+      "name": "Unreachable host returns 200",
+      "method": "POST",
+      "path": "/",
+      "body": {"host": "nonexistent.invalid.local", "port": 8000, "password": ""},
+      "expectedStatus": 200
+    }
+  ]
+}
